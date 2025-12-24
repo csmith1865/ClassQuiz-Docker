@@ -1,4 +1,4 @@
-name: Build and Push Docker Image
+name: Build and Push Docker Images
 
 on:
   push:
@@ -20,6 +20,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Read version from version.txt
+        id: version
+        run: |
+          VERSION=$(cat version.txt | tr -d ' \n')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -27,20 +33,32 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Read version from version.txt
-        id: version
-        run: |
-          VERSION=$(cat version.txt | tr -d ' \n')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Build Docker image
+      # -------------------------
+      # Backend (API + Worker)
+      # -------------------------
+      - name: Build backend Docker image
         run: |
           docker build \
             -t ghcr.io/${{ github.repository_owner }}/classquiz-docker:${{ steps.version.outputs.version }} \
             -t ghcr.io/${{ github.repository_owner }}/classquiz-docker:latest \
             .
 
-      - name: Push Docker image
+      - name: Push backend Docker image
         run: |
           docker push ghcr.io/${{ github.repository_owner }}/classquiz-docker:${{ steps.version.outputs.version }}
           docker push ghcr.io/${{ github.repository_owner }}/classquiz-docker:latest
+
+      # -------------------------
+      # Frontend
+      # -------------------------
+      - name: Build frontend Docker image
+        run: |
+          docker build \
+            -t ghcr.io/${{ github.repository_owner }}/classquiz-frontend:${{ steps.version.outputs.version }} \
+            -t ghcr.io/${{ github.repository_owner }}/classquiz-frontend:latest \
+            ./frontend
+
+      - name: Push frontend Docker image
+        run: |
+          docker push ghcr.io/${{ github.repository_owner }}/classquiz-frontend:${{ steps.version.outputs.version }}
+          docker push ghcr.io/${{ github.repository_owner }}/classquiz-frontend:latest
